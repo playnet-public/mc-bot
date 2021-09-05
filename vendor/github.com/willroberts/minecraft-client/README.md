@@ -1,5 +1,9 @@
 # minecraft-client
 
+[![GoDoc Badge]][GoDoc]
+[![Travis Badge]][Travis]
+[![License Badge]][License]
+
 A client for the Minecraft RCON protocol.
 
 ## Library Usage
@@ -50,12 +54,25 @@ $ docker run --name=minecraft-server -p 25575:25575 -d -e EULA=TRUE itzg/minecra
 
 ## Running Tests
 
-After starting the test server in Docker:
+To run unit tests:
 
 ```
 $ go test -v
 ```
 
+To run integration tests after starting the test server in Docker:
+
+```
+$ go test -v --tags=integration
+```
+
 ## Reference
 
 - https://wiki.vg/Rcon
+
+[GoDoc]: https://pkg.go.dev/github.com/willroberts/minecraft-client
+[GoDoc Badge]: https://pkg.go.dev/badge/github.com/willroberts/minecraft-client
+[Travis]: https://travis-ci.org/willroberts/minecraft-client
+[Travis Badge]: https://api.travis-ci.org/willroberts/minecraft-client.svg?branch=main
+[License]: https://www.gnu.org/licenses/gpl-3.0
+[License Badge]: https://img.shields.io/badge/License-GPLv3-blue.svg

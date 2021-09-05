@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/playnet-public/mc-bot/pkg/bot"
+	"github.com/playnet-public/mc-bot/pkg/commands/restart"
 	"github.com/playnet-public/mc-bot/pkg/commands/whitelist"
 	"github.com/playnet-public/mc-bot/pkg/minecraft"
 )
@@ -30,9 +31,15 @@ func main() {
 	}
 
 	bot := bot.NewGuild(appID, guildID)
+
 	bot = bot.WithCommand(whitelist.Command{
 		ApproverRole: minecraftApproverRole,
 		Whitelister:  mc,
+	})
+	bot = bot.WithCommand(restart.Command{
+		OverriderRole: minecraftApproverRole,
+		PlayerCounter: mc,
+		Restarter:     mc,
 	})
 
 	if err := bot.Finalize(app.Session()); err != nil {

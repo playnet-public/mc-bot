@@ -11,27 +11,26 @@ import (
 	rcon "github.com/willroberts/minecraft-client"
 )
 
-type SafeRCON struct {
+type ReconnectingRCON struct {
 	address  string
 	password string
 
-	maxReconnects     int
-	currentReconnects int
+	timeout time.Duration
 
 	l      sync.Mutex
 	client *rcon.Client
 }
 
-func NewSafeRCON(address, password string) *SafeRCON {
-	return &SafeRCON{
-		address:       address,
-		password:      password,
-		maxReconnects: 3,
+func NewReconnectingRCON(address, password string) *ReconnectingRCON {
+	return &ReconnectingRCON{
+		address:  address,
+		password: password,
+		timeout:  1 * time.Second,
 	}
 }
 
-func (c *SafeRCON) Setup() error {
-	client, err := rcon.NewClient(c.address)
+func (c *ReconnectingRCON) Setup() error {
+	client, err := rcon.NewClientTimeout(c.address, c.timeout)
 	if err != nil {
 		return err
 	}
@@ -42,7 +41,7 @@ func (c *SafeRCON) Setup() error {
 	return nil
 }
 
-func (c *SafeRCON) SendCommand(command string) (rcon.Message, error) {
+func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
 	c.l.Lock()
 	defer c.l.Unlock()
 	msg, err := c.client.SendCommand(command)
@@ -53,9 +52,10 @@ func (c *SafeRCON) SendCommand(command string) (rcon.Message, error) {
 	fmt.Println("failed sending rcon command:", err)
 
 	operr, isOpErr := err.(*net.OpError)
-	if (isOpErr && !operr.Temporary()) ||
+	if (isOpErr && (!operr.Temporary() || operr.Timeout())) ||
 		errors.Is(err, net.ErrClosed) ||
-		errors.Is(err, io.EOF) {
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) {
 		if err := c.Reconnect(); err != nil {
 			fmt.Println("failed to reconnect rcon:", err)
 			return rcon.Message{}, err
@@ -65,14 +65,11 @@ func (c *SafeRCON) SendCommand(command string) (rcon.Message, error) {
 	return rcon.Message{}, nil
 }
 
-func (c *SafeRCON) Reconnect() error {
-	if c.currentReconnects >= c.maxReconnects {
-		return errors.New("maximum amount of rcon reconnects reached")
-	}
-	c.currentReconnects++
-
+func (c *ReconnectingRCON) Reconnect() error {
 	fmt.Println("reconnecting rcon")
 	time.Sleep(1 * time.Millisecond)
+
+	c.client.Close()
 
 	if err := c.Setup(); err != nil {
 		return err

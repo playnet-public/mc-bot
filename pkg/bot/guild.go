@@ -55,10 +55,32 @@ func (b Guild) installCommands() {
 		if _, err := b.session.ApplicationCommandCreate(b.appID, b.guildID, command.Build()); err != nil {
 			fmt.Println(err)
 		}
-		b.session.AddHandler(func(session *discordgo.Session, i *discordgo.InteractionCreate) {
-			if err := command.Handle(session, i); err != nil {
-				fmt.Println("failed handling command:", err)
-			}
-		})
+		b.session.AddHandler(loggingHandler(command))
 	}
+}
+
+func loggingHandler(command Command) interface{} {
+	return func(session *discordgo.Session, i *discordgo.InteractionCreate) {
+		if err := handleMatching(command, session, i); err != nil {
+			fmt.Println("failed handling command:", err)
+		}
+	}
+}
+
+func handleMatching(command Command, session *discordgo.Session, i *discordgo.InteractionCreate) error {
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		if i.ApplicationCommandData().Name != command.Name() {
+			return nil
+		}
+		fmt.Println("handling command", i.Interaction.ID)
+		return command.HandleCommand(session, i)
+	case discordgo.InteractionMessageComponent:
+		if !command.MatchInteraction(i.MessageComponentData().CustomID) {
+			return nil
+		}
+		fmt.Println("handling interaction", i.Interaction.ID)
+		return command.HandleInteractions(session, i)
+	}
+	return nil
 }
