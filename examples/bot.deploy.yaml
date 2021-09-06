@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-bot
+  namespace: minecraft-bot
+spec:
+  selector:
+    matchLabels:
+      app: minecraft-bot
+  template:
+    metadata:
+      labels:
+        app: minecraft-bot
+    spec:
+      containers:
+      - name: minecraft-bot
+        image: quay.io/kwiesmueller/mc-bot:main
+        imagePullPolicy: Always
+        envFrom:
+          - secretRef:
+              name: minecraft-bot
+        resources:
+          requests:
+            memory: "10Mi"
+            cpu: "10m"
+          limits:
+            memory: "50Mi"
+            cpu: "250m"
