@@ -14,16 +14,19 @@ const (
 	approveID = "approve_whitelist"
 )
 
+// Command for whitelisting users on a Minecraft server
 type Command struct {
 	ApproverRole string
 
 	Whitelister minecraft.Whitelister
 }
 
+// Name of the Command
 func (c Command) Name() string {
 	return name
 }
 
+// Build the Command for installing
 func (c Command) Build() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
 		Name:        name,
@@ -39,10 +42,12 @@ func (c Command) Build() *discordgo.ApplicationCommand {
 	}
 }
 
+// MatchInteraction returns if the Command can handle the interaction
 func (c Command) MatchInteraction(id string) bool {
 	return id == approveID
 }
 
+// HandleCommand handles the initial event
 func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if len(i.ApplicationCommandData().Options) < 1 {
 		return errors.New("invalid amount of options")
@@ -53,7 +58,7 @@ func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.Interact
 	}
 	minecraftName := option.StringValue()
 
-	if err := session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Embeds: []*discordgo.MessageEmbed{
@@ -83,12 +88,10 @@ func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.Interact
 				},
 			},
 		},
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
+// HandleInteractions handles follow-up interactions with the original message
 func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if !c.isApprover(i.Member) {
 		return c.respondNotApprover(session, i)
@@ -105,7 +108,7 @@ func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.Int
 		return err
 	}
 
-	if err := session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 		Data: &discordgo.InteractionResponseData{
 			Components: []discordgo.MessageComponent{},
@@ -116,10 +119,7 @@ func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.Int
 				},
 			},
 		},
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 func (c Command) isApprover(member *discordgo.Member) bool {

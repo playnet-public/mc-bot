@@ -7,6 +7,7 @@ server via Discord.
 
 - **Whitelist Management:** Discord members can request to be added to the Minecraft
 whitelist. Once a member with the Approvers role confirms, they will be added.
+
 - **Server Restarts:** Discord members can request a server restart. The restart
 blocks until the server is empty. A member with the Approvers role can override.
 

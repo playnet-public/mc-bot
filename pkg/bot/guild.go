@@ -6,6 +6,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+// Guild is a kind of bot that's specific to a Discord guild
 type Guild struct {
 	session *discordgo.Session
 	appID   string
@@ -15,6 +16,7 @@ type Guild struct {
 	commands []Command
 }
 
+// NewGuild returns a new Guild bot for the specified appID and guildID
 func NewGuild(appID, guildID string) Guild {
 	return Guild{
 		appID:   appID,
@@ -22,16 +24,19 @@ func NewGuild(appID, guildID string) Guild {
 	}
 }
 
+// WithCommand returns a Guild with the Command registered
 func (b Guild) WithCommand(command Command) Guild {
 	b.commands = append(b.commands, command)
 	return b
 }
 
+// WithOperand returns a Guild with the Operand registered
 func (b Guild) WithOperand(operands Operand) Guild {
 	b.operands = append(b.operands, operands)
 	return b
 }
 
+// Finalize installs all registered commands and operands into the provided session
 func (b Guild) Finalize(session *discordgo.Session) error {
 	b.session = session
 

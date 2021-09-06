@@ -11,6 +11,7 @@ import (
 	rcon "github.com/willroberts/minecraft-client"
 )
 
+// ReconnectingRCON wraps a RCON client reconnecting it on connection errors
 type ReconnectingRCON struct {
 	address  string
 	password string
@@ -21,6 +22,7 @@ type ReconnectingRCON struct {
 	client *rcon.Client
 }
 
+// NewReconnectingRCON for the provided address and password
 func NewReconnectingRCON(address, password string) *ReconnectingRCON {
 	return &ReconnectingRCON{
 		address:  address,
@@ -29,6 +31,7 @@ func NewReconnectingRCON(address, password string) *ReconnectingRCON {
 	}
 }
 
+// Setup establishes the initial connection and authenticates the session
 func (c *ReconnectingRCON) Setup() error {
 	client, err := rcon.NewClientTimeout(c.address, c.timeout)
 	if err != nil {
@@ -41,6 +44,7 @@ func (c *ReconnectingRCON) Setup() error {
 	return nil
 }
 
+// SendCommand reconnecting the underlying session on any permanent connection errors
 func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
 	c.l.Lock()
 	defer c.l.Unlock()
@@ -65,15 +69,12 @@ func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
 	return rcon.Message{}, nil
 }
 
+// Reconnect the session
 func (c *ReconnectingRCON) Reconnect() error {
 	fmt.Println("reconnecting rcon")
 	time.Sleep(1 * time.Millisecond)
 
 	c.client.Close()
 
-	if err := c.Setup(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Setup()
 }

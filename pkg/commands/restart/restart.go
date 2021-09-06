@@ -17,6 +17,7 @@ const (
 	abortID    = "abort_restart"
 )
 
+// Command for restarting a Minecraft server on user requests
 type Command struct {
 	OverriderRole string
 
@@ -24,10 +25,12 @@ type Command struct {
 	Restarter     minecraft.Restarter
 }
 
+// Name of the Command
 func (c Command) Name() string {
 	return name
 }
 
+// Build the Command for installing
 func (c Command) Build() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
 		Name:        name,
@@ -36,12 +39,14 @@ func (c Command) Build() *discordgo.ApplicationCommand {
 	}
 }
 
+// MatchInteraction returns if the Command can handle the interaction
 func (c Command) MatchInteraction(id string) bool {
 	return id == overrideID ||
 		id == abortID ||
 		id == retryID
 }
 
+// HandleCommand handles the initial event
 func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return c.tryRestart(session, i, discordgo.InteractionResponseChannelMessageWithSource)
 }
@@ -115,6 +120,7 @@ func (c Command) tryRestart(session *discordgo.Session, i *discordgo.Interaction
 
 const debounceSeconds = 10
 
+// HandleInteractions handles follow-up interactions with the original message
 func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	switch id := i.Interaction.MessageComponentData().CustomID; id {
 	case overrideID:
