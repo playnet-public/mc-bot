@@ -11,6 +11,10 @@ whitelist. Once a member with the Approvers role confirms, they will be added.
 - **Server Restarts:** Discord members can request a server restart. The restart
 blocks until the server is empty. A member with the Approvers role can override.
 
+- **Players:** Discord members can request the current number and names of online players.
+
+- **RCON Channel:** A Discord channel can be converted into an RCON console.
+
 ### Screenshots
 
 #### Whitelist Command
@@ -36,6 +40,10 @@ blocks until the server is empty. A member with the Approvers role can override.
 #### Restart Result
 
 ![Restart Result](https://i.imgur.com/OBY5zU6.png)
+
+#### Players Result
+
+![Players Result](https://i.imgur.com/qwjezMq.png)
 
 ## Deployment
 

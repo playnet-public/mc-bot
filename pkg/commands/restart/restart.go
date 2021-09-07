@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/playnet-public/mc-bot/pkg/bot/debounce"
+	"github.com/playnet-public/mc-bot/pkg/bot/extract"
 	"github.com/playnet-public/mc-bot/pkg/bot/responses"
 	"github.com/playnet-public/mc-bot/pkg/minecraft"
 )
@@ -51,6 +53,26 @@ func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.Interact
 	return c.tryRestart(session, i, discordgo.InteractionResponseChannelMessageWithSource)
 }
 
+const debounceSeconds = 10
+
+// HandleInteractions handles follow-up interactions with the original message
+func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+	switch id := i.Interaction.MessageComponentData().CustomID; id {
+	case overrideID:
+		return c.handleOverride(session, i)
+	case abortID:
+		return c.handleAbort(session, i)
+	case retryID:
+		debouncer := debounce.InteractionTimestamp(extract.EmbedFieldValue(0, 1), debounceSeconds*time.Second)
+		if shouldDebounce, duration := debouncer(i); shouldDebounce {
+			return responses.NewInteractionEphemeral(session, i, fmt.Sprintf("Please wait at least %.f seconds before retrying.", duration.Seconds()))
+		}
+		return c.tryRestart(session, i, discordgo.InteractionResponseUpdateMessage)
+	default:
+		return nil
+	}
+}
+
 func (c Command) tryRestart(session *discordgo.Session, i *discordgo.InteractionCreate, responseType discordgo.InteractionResponseType) error {
 	playerCount, err := c.PlayerCounter.CountPlayers()
 	if err != nil {
@@ -75,7 +97,7 @@ func (c Command) tryRestart(session *discordgo.Session, i *discordgo.Interaction
 						},
 						{
 							Name:  "Last try",
-							Value: time.Now().UTC().Format(timestampFormat),
+							Value: debounce.NewTimestampFor(time.Now()),
 						},
 					},
 				},
@@ -116,49 +138,6 @@ func (c Command) tryRestart(session *discordgo.Session, i *discordgo.Interaction
 		return err
 	}
 	return nil
-}
-
-const debounceSeconds = 10
-
-// HandleInteractions handles follow-up interactions with the original message
-func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
-	switch id := i.Interaction.MessageComponentData().CustomID; id {
-	case overrideID:
-		return c.handleOverride(session, i)
-	case abortID:
-		return c.handleAbort(session, i)
-	case retryID:
-		if debounceRetry(i) {
-			return responses.NewInteractionEphemeral(session, i, fmt.Sprintf("Please wait at least %d seconds before retrying.", debounceSeconds))
-		}
-		return c.tryRestart(session, i, discordgo.InteractionResponseUpdateMessage)
-	default:
-		return nil
-	}
-}
-
-const timestampFormat = "2006/01/02 15:04:05"
-
-func debounceRetry(i *discordgo.InteractionCreate) bool {
-	embeds := i.Message.Embeds
-	if len(embeds) < 1 {
-		return false
-	}
-	fields := embeds[0].Fields
-	if len(fields) < 2 {
-		return false
-	}
-	value := fields[1].Value
-
-	lastRetry, err := time.Parse(timestampFormat, value)
-	if err != nil {
-		fmt.Println(err)
-		return false
-	}
-
-	now := time.Now().UTC()
-	lastRetry = lastRetry.UTC()
-	return now.Before(lastRetry.Add(debounceSeconds * time.Second))
 }
 
 func (c Command) handleOverride(session *discordgo.Session, i *discordgo.InteractionCreate) error {

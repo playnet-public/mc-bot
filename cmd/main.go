@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/playnet-public/mc-bot/pkg/bot"
+	"github.com/playnet-public/mc-bot/pkg/commands/players"
 	"github.com/playnet-public/mc-bot/pkg/commands/restart"
 	"github.com/playnet-public/mc-bot/pkg/commands/whitelist"
 	"github.com/playnet-public/mc-bot/pkg/minecraft"
+	"github.com/playnet-public/mc-bot/pkg/operands/rcon"
 )
 
 func main() {
@@ -17,6 +20,8 @@ func main() {
 	minecraftApproverRole := os.Getenv("MC_APPROVERS")
 	minecraftRconAddress := os.Getenv("MC_RCON_ADDRESS")
 	minecraftRconPassword := os.Getenv("MC_RCON_PASSWORD")
+	minecraftRCONChannelID := os.Getenv("MC_RCON_CHANNEL_ID")
+
 
 	app, err := bot.New().Setup(token)
 	if err != nil {
@@ -40,6 +45,17 @@ func main() {
 		OverriderRole: minecraftApproverRole,
 		PlayerCounter: mc,
 		Restarter:     mc,
+	})
+	bot = bot.WithCommand(players.Command{
+		PlayerLister: mc,
+		PollInterval: 10 * time.Second,
+		Session:      app.Session(),
+	})
+
+	bot = bot.WithOperand(rcon.Operand{
+		ChannelID:     minecraftRCONChannelID,
+		RCONRole:      minecraftApproverRole,
+		CommandSender: mc,
 	})
 
 	if err := bot.Finalize(app.Session()); err != nil {
