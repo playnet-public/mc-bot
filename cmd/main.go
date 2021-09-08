@@ -22,7 +22,6 @@ func main() {
 	minecraftRconPassword := os.Getenv("MC_RCON_PASSWORD")
 	minecraftRCONChannelID := os.Getenv("MC_RCON_CHANNEL_ID")
 
-
 	app, err := bot.New().Setup(token)
 	if err != nil {
 		fmt.Println(err)
@@ -45,6 +44,7 @@ func main() {
 		OverriderRole: minecraftApproverRole,
 		PlayerCounter: mc,
 		Restarter:     mc,
+		MessageSender: mc,
 	})
 	bot = bot.WithCommand(players.Command{
 		PlayerLister: mc,

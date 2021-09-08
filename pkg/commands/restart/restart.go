@@ -25,6 +25,7 @@ type Command struct {
 
 	PlayerCounter minecraft.PlayerCounter
 	Restarter     minecraft.Restarter
+	MessageSender minecraft.MessageSender
 }
 
 // Name of the Command
@@ -50,6 +51,9 @@ func (c Command) MatchInteraction(id string) bool {
 
 // HandleCommand handles the initial event
 func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+	if err := c.MessageSender.SendMessage(fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", i.Member.Mention())); err != nil {
+		fmt.Println("failed sending restart message:", err)
+	}
 	return c.tryRestart(session, i, discordgo.InteractionResponseChannelMessageWithSource)
 }
 

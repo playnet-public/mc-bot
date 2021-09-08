@@ -14,6 +14,11 @@ type CommandSender interface {
 	SendCommand(command string) (rcon.Message, error)
 }
 
+// MessageSender for sending chat messages to the minecraft server
+type MessageSender interface {
+	SendMessage(msg string) error
+}
+
 // Whitelister for whitelisting users
 type Whitelister interface {
 	Whitelist(username string) error
@@ -85,6 +90,16 @@ func (c Client) SendCommand(command string) (rcon.Message, error) {
 	}
 	fmt.Println("sendCommand response:", msg)
 	return msg, nil
+}
+
+// SendMessage to the server via RCON
+func (c Client) SendMessage(msg string) error {
+	resp, err := c.rcon.SendCommand("say " + msg)
+	if err != nil {
+		return err
+	}
+	fmt.Println("message response:", resp)
+	return nil
 }
 
 var (
