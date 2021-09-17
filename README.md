@@ -2,6 +2,7 @@
 
 This is a small personal project to allow small-scale management of a Minecraft
 server via Discord.
+It also supports other games, right now including Valheim.
 
 ## Features
 
@@ -45,6 +46,14 @@ blocks until the server is empty. A member with the Approvers role can override.
 
 ![Players Result](https://i.imgur.com/qwjezMq.png)
 
+## Valheim Support
+
+Valheim support is the first other mode added to the bot.
+It supports the same restart and player info command.
+Restarting happens by terminating the Kubernetes Pod the server runs in.
+Player Info gets fetched from the server via the Steam Query Protocol.
+Valheim only supports player count so far, no player names are returned.
+
 ## Deployment
 
 The bot can be deployed on Kubernetes.
@@ -71,3 +80,4 @@ If you want to do more with this, feel free to get in touch :-)
 - [willroberts/minecraft-client](https://github.com/willroberts/minecraft-client)
 - [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server)
 - [pl3xgaming/Purpur](https://github.com/pl3xgaming/Purpur)
+- [rumblefrog/go-a2s](https://github.com/rumblefrog/go-a2s)

@@ -1,0 +1,9 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: minecraft-bot
+  namespace: minecraft-bot
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["deletecollection"]

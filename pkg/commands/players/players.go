@@ -22,7 +22,6 @@ const (
 type Command struct {
 	PlayerLister minecraft.PlayerLister
 	PollInterval time.Duration
-	Session      *discordgo.Session
 }
 
 // Name of the Command

@@ -51,7 +51,13 @@ func (c Command) MatchInteraction(id string) bool {
 
 // HandleCommand handles the initial event
 func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
-	if err := c.MessageSender.SendMessage(fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", i.Member.Mention())); err != nil {
+	var mention string
+	if i.Member != nil {
+		mention = i.Member.Mention()
+	} else if i.User != nil {
+		mention = i.User.Mention()
+	}
+	if err := c.MessageSender.SendMessage(fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", mention)); err != nil {
 		fmt.Println("failed sending restart message:", err)
 	}
 	return c.tryRestart(session, i, discordgo.InteractionResponseChannelMessageWithSource)

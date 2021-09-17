@@ -12,6 +12,7 @@ spec:
       labels:
         app: minecraft-bot
     spec:
+      serviceAccountName: minecraft-bot
       containers:
       - name: minecraft-bot
         image: quay.io/kwiesmueller/mc-bot:main
