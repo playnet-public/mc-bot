@@ -21,7 +21,7 @@ type StatefulSetRestarter struct {
 }
 
 // Restart patches the statefulset to cause a restart
-func (r StatefulSetRestarter) Restart() error {
+func (r StatefulSetRestarter) Restart(ctx context.Context) error {
 	// .Spec.Template.ObjectMeta.Annotations["restarter.play-net.org/restartedAt"]
 	patch := []byte(fmt.Sprintf(`[{"op": "add", "path": "/spec/template/metadata/annotations/restarter.play-net.org~1restartedAt", "value": %s}]`, time.Now().UTC().Format(time.RFC3339)))
 	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).Patch(context.TODO(), r.Name, types.JSONPatchType, patch, v1.PatchOptions{
@@ -41,7 +41,7 @@ type PodRestarter struct {
 }
 
 // Restart the app by deleting its pod
-func (r PodRestarter) Restart() error {
+func (r PodRestarter) Restart(ctx context.Context) error {
 	req, err := labels.NewRequirement(r.LabelKey, selection.Equals, []string{r.LabelValue})
 	if err != nil {
 		return err

@@ -1,6 +1,8 @@
 package valheim
 
 import (
+	"context"
+
 	a2s "github.com/rumblefrog/go-a2s"
 )
 
@@ -10,7 +12,7 @@ func (c Client) Info() (*a2s.ServerInfo, error) {
 }
 
 // CountPlayers on the Server right now
-func (c Client) CountPlayers() (int, error) {
+func (c Client) CountPlayers(ctx context.Context) (int, error) {
 	playerInfo, err := c.a2sClient.QueryPlayer()
 	if err != nil {
 		return -1, err
@@ -21,7 +23,7 @@ func (c Client) CountPlayers() (int, error) {
 
 // Players on the server right now
 // NOTE: Valheim currently does not provide the player names, so the list of players is left empty
-func (c Client) Players() (int, []string, error) {
+func (c Client) Players(ctx context.Context) (int, []string, error) {
 	playerInfo, err := c.a2sClient.QueryPlayer()
 	if err != nil {
 		return -1, nil, err
@@ -33,5 +35,5 @@ func (c Client) Players() (int, []string, error) {
 	// 	playerNames = append(playerNames, player.Name)
 	// }
 
-	return int(playerInfo.Count), nil, nil
+	return int(playerInfo.Count), []string{"<unknown>"}, nil
 }

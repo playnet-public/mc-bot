@@ -1,12 +1,12 @@
 package whitelist
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/playnet-public/mc-bot/pkg/bot/responses"
-	"github.com/playnet-public/mc-bot/pkg/minecraft"
 )
 
 const (
@@ -18,7 +18,9 @@ const (
 type Command struct {
 	ApproverRole string
 
-	Whitelister minecraft.Whitelister
+	Whitelister interface {
+		Whitelist(ctx context.Context, username string) error
+	}
 }
 
 // Name of the Command
@@ -48,7 +50,7 @@ func (c Command) MatchInteraction(id string) bool {
 }
 
 // HandleCommand handles the initial event
-func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c Command) HandleCommand(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if len(i.ApplicationCommandData().Options) < 1 {
 		return errors.New("invalid amount of options")
 	}
@@ -92,7 +94,7 @@ func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.Interact
 }
 
 // HandleInteractions handles follow-up interactions with the original message
-func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c Command) HandleInteractions(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if !c.isApprover(i.Member) {
 		return c.respondNotApprover(session, i)
 	}
@@ -103,7 +105,7 @@ func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.Int
 
 	minecraftName := i.Message.Embeds[0].Fields[0].Value
 
-	if err := c.Whitelister.Whitelist(minecraftName); err != nil {
+	if err := c.Whitelister.Whitelist(ctx, minecraftName); err != nil {
 		responses.NewInteractionError(session, i, err)
 		return err
 	}

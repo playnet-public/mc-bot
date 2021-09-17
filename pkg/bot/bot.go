@@ -1,6 +1,16 @@
 package bot
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"context"
+
+	"github.com/bwmarrin/discordgo"
+)
+
+type Service interface {
+	WithCommand(command ...Command) Service
+	WithOperand(operands ...Operand) Service
+	Finalize(ctx context.Context, session *discordgo.Session) error
+}
 
 // Namer interface for identifying things
 type Namer interface {
@@ -10,7 +20,7 @@ type Namer interface {
 // Operand defines the interface for a default bot component listening for events
 type Operand interface {
 	Namer
-	AddHandlers(session *discordgo.Session)
+	AddHandlers(ctx context.Context, session *discordgo.Session)
 	Intents() discordgo.Intent
 }
 
@@ -19,6 +29,6 @@ type Command interface {
 	Namer
 	Build() *discordgo.ApplicationCommand
 	MatchInteraction(id string) bool
-	HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error
-	HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error
+	HandleCommand(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error
+	HandleInteractions(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error
 }

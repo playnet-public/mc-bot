@@ -1,11 +1,12 @@
 package bot
 
 import (
-	"fmt"
+	"context"
 	"os"
 	"os/signal"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/seibert-media/golibs/log"
 )
 
 // App running a bot session
@@ -34,10 +35,10 @@ func (s App) Session() *discordgo.Session {
 }
 
 // Start the underlying session and wait for an Interrupt event to end it
-func (s App) Start() error {
+func (s App) Start(ctx context.Context) error {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	fmt.Println("running")
+	log.From(ctx).Info("running")
 	if err := s.session.Open(); err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func (s App) Start() error {
 }
 
 // Stop the underlying session
-func (s App) Stop() error {
-	fmt.Println("terminating")
+func (s App) Stop(ctx context.Context) error {
+	log.From(ctx).Fatal("stopping")
 	return s.session.Close()
 }

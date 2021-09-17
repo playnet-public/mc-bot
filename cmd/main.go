@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/playnet-public/mc-bot/pkg/noop"
 	"github.com/playnet-public/mc-bot/pkg/operands/rcon"
 	"github.com/playnet-public/mc-bot/pkg/valheim"
+	"github.com/seibert-media/golibs/log"
 
 	kubernetesClient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -22,36 +24,39 @@ import (
 func main() {
 	token := os.Getenv("TOKEN")
 	appID := os.Getenv("APP_ID")
-	guildID := os.Getenv("GUILD_ID")
 
 	minecraftEnabled := os.Getenv("ENABLE_MINECRAFT")
 	valheimEnabled := os.Getenv("ENABLE_VALHEIM")
 
-	app, err := bot.New().Setup(token)
+	logger, err := log.New("", true)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	ctx := log.WithLogger(context.Background(), logger)
 
-	bot := bot.NewGuild(appID, guildID)
+	app, err := bot.New().Setup(token)
+	if err != nil {
+		log.From(ctx).Fatal("setting up bot")
+	}
+
+	bot := bot.NewMulti(appID)
 
 	if len(minecraftEnabled) > 0 {
-		bot = enableMinecraft(bot)
+		bot = enableMinecraft(ctx, bot)
 	}
 
 	if len(valheimEnabled) > 0 {
-		bot = enableValheim(bot)
+		bot = enableValheim(ctx, bot)
 	}
 
-	if err := bot.Finalize(app.Session()); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	if err := bot.Finalize(ctx, app.Session()); err != nil {
+		log.From(ctx).Fatal("finalizing bot")
 	}
 
-	defer app.Stop()
-	if err := app.Start(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	defer app.Stop(ctx)
+	if err := app.Start(ctx); err != nil {
+		log.From(ctx).Fatal("running bot")
 	}
 }
 
@@ -69,7 +74,7 @@ func setupKubernetesClient() (*kubernetesClient.Clientset, error) {
 	return clientset, nil
 }
 
-func enableMinecraft(bot bot.Guild) bot.Guild {
+func enableMinecraft(ctx context.Context, bot bot.Service) bot.Service {
 	minecraftApproverRole := os.Getenv("MC_APPROVERS")
 	minecraftRconAddress := os.Getenv("MC_RCON_ADDRESS")
 	minecraftRconPassword := os.Getenv("MC_RCON_PASSWORD")
@@ -77,8 +82,7 @@ func enableMinecraft(bot bot.Guild) bot.Guild {
 
 	mc, err := minecraft.NewClient().Setup(minecraftRconAddress, minecraftRconPassword)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.From(ctx).Fatal("setting up minecraft client")
 	}
 
 	bot = bot.WithCommand(whitelist.Command{
@@ -104,7 +108,7 @@ func enableMinecraft(bot bot.Guild) bot.Guild {
 	return bot
 }
 
-func enableValheim(bot bot.Guild) bot.Guild {
+func enableValheim(ctx context.Context, bot bot.Service) bot.Service {
 	valheimQueryAddress := os.Getenv("VALHEIM_QUERY_ADDRESS")
 	valheimApproverRole := os.Getenv("VALHEIM_APPROVERS")
 	valheimServerNamespace := os.Getenv("VALHEIM_SERVER_NAMESPACE")
@@ -113,14 +117,12 @@ func enableValheim(bot bot.Guild) bot.Guild {
 
 	valheimClient, err := valheim.NewClient(valheimQueryAddress).Setup()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.From(ctx).Fatal("setting up valheim client")
 	}
 
 	clientset, err := setupKubernetesClient()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.From(ctx).Fatal("setting up kubernetes client")
 	}
 
 	bot = bot.WithCommand(restart.Command{

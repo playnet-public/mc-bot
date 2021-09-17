@@ -1,7 +1,6 @@
 package debounce
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -29,7 +28,6 @@ func InteractionTimestamp(getTimestamp extract.MessageString, debounce time.Dura
 func OnTimestamp(lastTimestamp string, debounce time.Duration) (bool, time.Duration) {
 	lastRetry, err := time.ParseInLocation(timestampFormat, lastTimestamp, time.Local)
 	if err != nil {
-		fmt.Println(err)
 		return false, 0
 	}
 

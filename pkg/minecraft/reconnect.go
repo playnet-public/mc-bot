@@ -1,14 +1,16 @@
 package minecraft
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/seibert-media/golibs/log"
 	rcon "github.com/willroberts/minecraft-client"
+	"go.uber.org/zap"
 )
 
 // ReconnectingRCON wraps a RCON client reconnecting it on connection errors
@@ -45,7 +47,9 @@ func (c *ReconnectingRCON) Setup() error {
 }
 
 // SendCommand reconnecting the underlying session on any permanent connection errors
-func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
+func (c *ReconnectingRCON) SendCommand(ctx context.Context, command string) (rcon.Message, error) {
+	ctx = log.WithFields(ctx, zap.String("command", command))
+
 	c.l.Lock()
 	defer c.l.Unlock()
 	msg, err := c.client.SendCommand(command)
@@ -53,15 +57,15 @@ func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
 		return msg, nil
 	}
 
-	fmt.Println("failed sending rcon command:", err)
+	log.From(ctx).Error("sending rcon command", zap.Error(err))
 
 	operr, isOpErr := err.(*net.OpError)
 	if (isOpErr && (!operr.Temporary() || operr.Timeout())) ||
 		errors.Is(err, net.ErrClosed) ||
 		errors.Is(err, io.EOF) ||
 		errors.Is(err, io.ErrUnexpectedEOF) {
-		if err := c.Reconnect(); err != nil {
-			fmt.Println("failed to reconnect rcon:", err)
+		if err := c.Reconnect(ctx); err != nil {
+			log.From(ctx).Error("reconnecting rcon", zap.Error(err))
 			return rcon.Message{}, err
 		}
 	}
@@ -70,8 +74,8 @@ func (c *ReconnectingRCON) SendCommand(command string) (rcon.Message, error) {
 }
 
 // Reconnect the session
-func (c *ReconnectingRCON) Reconnect() error {
-	fmt.Println("reconnecting rcon")
+func (c *ReconnectingRCON) Reconnect(ctx context.Context) error {
+	log.From(ctx).Error("reconnecting rcon")
 	time.Sleep(1 * time.Millisecond)
 
 	c.client.Close()

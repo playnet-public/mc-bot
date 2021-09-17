@@ -1,6 +1,7 @@
 package restart
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -9,7 +10,8 @@ import (
 	"github.com/playnet-public/mc-bot/pkg/bot/debounce"
 	"github.com/playnet-public/mc-bot/pkg/bot/extract"
 	"github.com/playnet-public/mc-bot/pkg/bot/responses"
-	"github.com/playnet-public/mc-bot/pkg/minecraft"
+	"github.com/seibert-media/golibs/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,13 +21,19 @@ const (
 	abortID    = "abort_restart"
 )
 
-// Command for restarting a Minecraft server on user requests
+// Command for restarting a server on user requests
 type Command struct {
 	OverriderRole string
 
-	PlayerCounter minecraft.PlayerCounter
-	Restarter     minecraft.Restarter
-	MessageSender minecraft.MessageSender
+	PlayerCounter interface {
+		CountPlayers(ctx context.Context) (int, error)
+	}
+	Restarter interface {
+		Restart(ctx context.Context) error
+	}
+	MessageSender interface {
+		SendMessage(ctx context.Context, msg string) error
+	}
 }
 
 // Name of the Command
@@ -37,7 +45,7 @@ func (c Command) Name() string {
 func (c Command) Build() *discordgo.ApplicationCommand {
 	return &discordgo.ApplicationCommand{
 		Name:        name,
-		Description: "Restart the Minecraft server",
+		Description: "Restart the server",
 		Options:     []*discordgo.ApplicationCommandOption{},
 	}
 }
@@ -50,26 +58,26 @@ func (c Command) MatchInteraction(id string) bool {
 }
 
 // HandleCommand handles the initial event
-func (c Command) HandleCommand(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c Command) HandleCommand(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	var mention string
 	if i.Member != nil {
 		mention = i.Member.Mention()
 	} else if i.User != nil {
 		mention = i.User.Mention()
 	}
-	if err := c.MessageSender.SendMessage(fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", mention)); err != nil {
-		fmt.Println("failed sending restart message:", err)
+	if err := c.MessageSender.SendMessage(ctx, fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", mention)); err != nil {
+		log.From(ctx).Error("sending restart message", zap.Error(err))
 	}
-	return c.tryRestart(session, i, discordgo.InteractionResponseChannelMessageWithSource)
+	return c.tryRestart(ctx, session, i, discordgo.InteractionResponseChannelMessageWithSource)
 }
 
 const debounceSeconds = 10
 
 // HandleInteractions handles follow-up interactions with the original message
-func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c Command) HandleInteractions(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	switch id := i.Interaction.MessageComponentData().CustomID; id {
 	case overrideID:
-		return c.handleOverride(session, i)
+		return c.handleOverride(ctx, session, i)
 	case abortID:
 		return c.handleAbort(session, i)
 	case retryID:
@@ -77,23 +85,23 @@ func (c Command) HandleInteractions(session *discordgo.Session, i *discordgo.Int
 		if shouldDebounce, duration := debouncer(i); shouldDebounce {
 			return responses.NewInteractionEphemeral(session, i, fmt.Sprintf("Please wait at least %.f seconds before retrying.", duration.Seconds()))
 		}
-		return c.tryRestart(session, i, discordgo.InteractionResponseUpdateMessage)
+		return c.tryRestart(ctx, session, i, discordgo.InteractionResponseUpdateMessage)
 	default:
 		return nil
 	}
 }
 
-func (c Command) tryRestart(session *discordgo.Session, i *discordgo.InteractionCreate, responseType discordgo.InteractionResponseType) error {
-	playerCount, err := c.PlayerCounter.CountPlayers()
+func (c Command) tryRestart(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate, responseType discordgo.InteractionResponseType) error {
+	playerCount, err := c.PlayerCounter.CountPlayers(ctx)
 	if err != nil {
 		return responses.NewInteractionError(session, i, fmt.Errorf("failed getting player count: %w", err))
 	}
 
 	if playerCount < 1 {
-		return c.restartNow(session, i, responseType)
+		return c.restartNow(ctx, session, i, responseType)
 	}
 
-	if err := session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	return session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: responseType,
 		Data: &discordgo.InteractionResponseData{
 			Embeds: []*discordgo.MessageEmbed{
@@ -143,19 +151,15 @@ func (c Command) tryRestart(session *discordgo.Session, i *discordgo.Interaction
 				},
 			},
 		},
-	}); err != nil {
-		fmt.Println("failed to update restart message type:", responseType, i.Interaction.ID)
-		return err
-	}
-	return nil
+	})
 }
 
-func (c Command) handleOverride(session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func (c Command) handleOverride(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	if !c.isApprover(i.Member) {
 		return c.respondNotOverrider(session, i)
 	}
 
-	return c.restartNow(session, i, discordgo.InteractionResponseUpdateMessage)
+	return c.restartNow(ctx, session, i, discordgo.InteractionResponseUpdateMessage)
 }
 
 func (c Command) handleAbort(session *discordgo.Session, i *discordgo.InteractionCreate) error {
@@ -173,9 +177,9 @@ func (c Command) handleAbort(session *discordgo.Session, i *discordgo.Interactio
 	})
 }
 
-func (c Command) restartNow(session *discordgo.Session, i *discordgo.InteractionCreate, responseType discordgo.InteractionResponseType) error {
-	if err := c.Restarter.Restart(); err != nil {
-		fmt.Println(err)
+func (c Command) restartNow(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate, responseType discordgo.InteractionResponseType) error {
+	if err := c.Restarter.Restart(ctx); err != nil {
+		log.From(ctx).Error("restarting server", zap.Error(err))
 		return responses.NewInteractionError(session, i, fmt.Errorf("failed to restart the server: %w", err))
 	}
 	return session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

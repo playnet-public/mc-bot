@@ -1,9 +1,11 @@
 package bot
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/seibert-media/golibs/log"
+	"go.uber.org/zap"
 )
 
 // Guild is a kind of bot that's specific to a Discord guild
@@ -17,7 +19,7 @@ type Guild struct {
 }
 
 // NewGuild returns a new Guild bot for the specified appID and guildID
-func NewGuild(appID, guildID string) Guild {
+func NewGuild(appID, guildID string) Service {
 	return Guild{
 		appID:   appID,
 		guildID: guildID,
@@ -25,67 +27,69 @@ func NewGuild(appID, guildID string) Guild {
 }
 
 // WithCommand returns a Guild with the Command registered
-func (b Guild) WithCommand(command Command) Guild {
-	b.commands = append(b.commands, command)
+func (b Guild) WithCommand(command ...Command) Service {
+	b.commands = append(b.commands, command...)
 	return b
 }
 
 // WithOperand returns a Guild with the Operand registered
-func (b Guild) WithOperand(operands Operand) Guild {
-	b.operands = append(b.operands, operands)
+func (b Guild) WithOperand(operands ...Operand) Service {
+	b.operands = append(b.operands, operands...)
 	return b
 }
 
 // Finalize installs all registered commands and operands into the provided session
-func (b Guild) Finalize(session *discordgo.Session) error {
+func (b Guild) Finalize(ctx context.Context, session *discordgo.Session) error {
 	b.session = session
 
-	b.installOperands()
-	b.installCommands()
+	b.installOperands(ctx)
+	b.installCommands(ctx)
 
 	return nil
 }
 
-func (b Guild) installOperands() {
+func (b Guild) installOperands(ctx context.Context) {
 	for _, operand := range b.operands {
-		fmt.Println("installing operand", operand.Name())
-		operand.AddHandlers(b.session)
+		log.From(ctx).Info("installing operand", zap.String("name", operand.Name()))
+		operand.AddHandlers(ctx, b.session)
 		b.session.Identify.Intents |= operand.Intents()
 	}
 }
 
-func (b Guild) installCommands() {
+func (b Guild) installCommands(ctx context.Context) {
 	for _, command := range b.commands {
-		fmt.Println("installing command", command.Name())
+		ctx := log.WithFields(ctx, zap.String("name", command.Name()))
+		log.From(ctx).Info("installing command")
 		if _, err := b.session.ApplicationCommandCreate(b.appID, b.guildID, command.Build()); err != nil {
-			fmt.Println(err)
+			log.From(ctx).Error("installing command", zap.Error(err))
 		}
-		b.session.AddHandler(loggingHandler(command))
+		b.session.AddHandler(loggingHandler(ctx, command))
 	}
 }
 
-func loggingHandler(command Command) interface{} {
+func loggingHandler(ctx context.Context, command Command) interface{} {
 	return func(session *discordgo.Session, i *discordgo.InteractionCreate) {
-		if err := handleMatching(command, session, i); err != nil {
-			fmt.Println("failed handling command:", err)
+		if err := handleMatching(ctx, command, session, i); err != nil {
+			log.From(ctx).Error("handling command", zap.Error(err))
 		}
 	}
 }
 
-func handleMatching(command Command, session *discordgo.Session, i *discordgo.InteractionCreate) error {
+func handleMatching(ctx context.Context, command Command, session *discordgo.Session, i *discordgo.InteractionCreate) error {
+	ctx = log.WithFields(ctx, zap.String("interaction", i.Interaction.ID))
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
 		if i.ApplicationCommandData().Name != command.Name() {
 			return nil
 		}
-		fmt.Println("handling command", i.Interaction.ID)
-		return command.HandleCommand(session, i)
+		log.From(ctx).Info("handling command")
+		return command.HandleCommand(ctx, session, i)
 	case discordgo.InteractionMessageComponent:
 		if !command.MatchInteraction(i.MessageComponentData().CustomID) {
 			return nil
 		}
-		fmt.Println("handling interaction", i.Interaction.ID)
-		return command.HandleInteractions(session, i)
+		log.From(ctx).Info("handling interaction")
+		return command.HandleInteractions(ctx, session, i)
 	}
 	return nil
 }
