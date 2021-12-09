@@ -1,11 +1,11 @@
-FROM golang:1.17 AS builder
+FROM quay.io/kwiesmueller/golang-mirror:1.17 AS builder
 
 WORKDIR /workdir
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags "-s" -a -installsuffix cgo -o /app ./cmd/main.go
 
-FROM alpine:3 as alpine
+FROM quay.io/kwiesmueller/alpine-mirror as alpine
 RUN apk --no-cache add ca-certificates
 
 FROM scratch
