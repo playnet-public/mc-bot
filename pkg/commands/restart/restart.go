@@ -60,10 +60,10 @@ func (c Command) MatchInteraction(id string) bool {
 // HandleCommand handles the initial event
 func (c Command) HandleCommand(ctx context.Context, session *discordgo.Session, i *discordgo.InteractionCreate) error {
 	var mention string
-	if i.Member != nil {
-		mention = i.Member.Mention()
+	if i.Member != nil && i.Member.User != nil {
+		mention = i.Member.User.String()
 	} else if i.User != nil {
-		mention = i.User.Mention()
+		mention = i.User.String()
 	}
 	if err := c.MessageSender.SendMessage(ctx, fmt.Sprintf("%s is requesting a server restart. You can leave the server to comply with their request.", mention)); err != nil {
 		log.From(ctx).Error("sending restart message", zap.Error(err))

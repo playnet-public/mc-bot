@@ -45,12 +45,15 @@ type StatefulSetScaler struct {
 func (r StatefulSetScaler) ScaleDown(ctx context.Context) error {
 	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).ApplyScale(context.TODO(), r.Name,
 		applyconfigurationsautoscalingv1.Scale().
+			WithAPIVersion("autoscaling/v1").
+			WithKind("Scale").
 			WithName(r.Name).
 			WithNamespace(r.Namespace).
 			WithSpec(applyconfigurationsautoscalingv1.ScaleSpec().
 				WithReplicas(0)),
 		v1.ApplyOptions{
 			FieldManager: r.FieldManager,
+			Force:        true,
 		}); err != nil {
 		return err
 	}
@@ -61,12 +64,15 @@ func (r StatefulSetScaler) ScaleDown(ctx context.Context) error {
 func (r StatefulSetScaler) ScaleUp(ctx context.Context) error {
 	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).ApplyScale(context.TODO(), r.Name,
 		applyconfigurationsautoscalingv1.Scale().
+			WithAPIVersion("autoscaling/v1").
+			WithKind("Scale").
 			WithName(r.Name).
 			WithNamespace(r.Namespace).
 			WithSpec(applyconfigurationsautoscalingv1.ScaleSpec().
 				WithReplicas(1)),
 		v1.ApplyOptions{
 			FieldManager: r.FieldManager,
+			Force:        true,
 		}); err != nil {
 		return err
 	}
