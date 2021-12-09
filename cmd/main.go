@@ -9,7 +9,9 @@ import (
 	"github.com/playnet-public/mc-bot/pkg/bot"
 	"github.com/playnet-public/mc-bot/pkg/commands/players"
 	"github.com/playnet-public/mc-bot/pkg/commands/restart"
+	"github.com/playnet-public/mc-bot/pkg/commands/wakeup"
 	"github.com/playnet-public/mc-bot/pkg/commands/whitelist"
+	"github.com/playnet-public/mc-bot/pkg/commands/winddown"
 	"github.com/playnet-public/mc-bot/pkg/kubernetes"
 	"github.com/playnet-public/mc-bot/pkg/minecraft"
 	"github.com/playnet-public/mc-bot/pkg/noop"
@@ -79,6 +81,8 @@ func enableMinecraft(ctx context.Context, bot bot.Service) bot.Service {
 	minecraftRconAddress := os.Getenv("MC_RCON_ADDRESS")
 	minecraftRconPassword := os.Getenv("MC_RCON_PASSWORD")
 	minecraftRCONChannelID := os.Getenv("MC_RCON_CHANNEL_ID")
+	minecraftStatefulSetName := os.Getenv("MC_STS_NAME")
+	minecraftStatefulSetNamespace := os.Getenv("MC_STS_NAMESPACE")
 
 	mc, err := minecraft.NewClient().Setup(minecraftRconAddress, minecraftRconPassword)
 	if err != nil {
@@ -105,6 +109,32 @@ func enableMinecraft(ctx context.Context, bot bot.Service) bot.Service {
 		RCONRole:      minecraftApproverRole,
 		CommandSender: mc,
 	})
+
+	if len(minecraftStatefulSetName) > 0 && len(minecraftStatefulSetNamespace) > 0 {
+		clientset, err := setupKubernetesClient()
+		if err != nil {
+			log.From(ctx).Fatal("setting up kubernetes client")
+		}
+
+		scaler := kubernetes.StatefulSetScaler{
+			Namespace:    minecraftStatefulSetNamespace,
+			Name:         minecraftStatefulSetName,
+			ClientSet:    clientset,
+			FieldManager: "minecraft-bot",
+		}
+
+		bot = bot.WithCommand(winddown.Command{
+			OverriderRole: minecraftApproverRole,
+			PlayerCounter: mc,
+			Scaler:        scaler,
+			MessageSender: mc,
+		})
+
+		bot = bot.WithCommand(wakeup.Command{
+			Scaler: scaler,
+		})
+	}
+
 	return bot
 }
 

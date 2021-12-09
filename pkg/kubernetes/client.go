@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	applyconfigurationsautoscalingv1 "k8s.io/client-go/applyconfigurations/autoscaling/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -27,6 +28,46 @@ func (r StatefulSetRestarter) Restart(ctx context.Context) error {
 	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).Patch(context.TODO(), r.Name, types.JSONPatchType, patch, v1.PatchOptions{
 		FieldManager: r.FieldManager,
 	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// StatefulSetScaler allows to scale down a statefulset
+type StatefulSetScaler struct {
+	Namespace    string
+	Name         string
+	ClientSet    *kubernetes.Clientset
+	FieldManager string
+}
+
+// ScaleDown the statefulset
+func (r StatefulSetScaler) ScaleDown(ctx context.Context) error {
+	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).ApplyScale(context.TODO(), r.Name,
+		applyconfigurationsautoscalingv1.Scale().
+			WithName(r.Name).
+			WithNamespace(r.Namespace).
+			WithSpec(applyconfigurationsautoscalingv1.ScaleSpec().
+				WithReplicas(0)),
+		v1.ApplyOptions{
+			FieldManager: r.FieldManager,
+		}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ScaleUp the statefulset
+func (r StatefulSetScaler) ScaleUp(ctx context.Context) error {
+	if _, err := r.ClientSet.AppsV1().StatefulSets(r.Namespace).ApplyScale(context.TODO(), r.Name,
+		applyconfigurationsautoscalingv1.Scale().
+			WithName(r.Name).
+			WithNamespace(r.Namespace).
+			WithSpec(applyconfigurationsautoscalingv1.ScaleSpec().
+				WithReplicas(1)),
+		v1.ApplyOptions{
+			FieldManager: r.FieldManager,
+		}); err != nil {
 		return err
 	}
 	return nil
