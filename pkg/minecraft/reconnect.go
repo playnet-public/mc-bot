@@ -3,6 +3,7 @@ package minecraft
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -52,6 +53,11 @@ func (c *ReconnectingRCON) SendCommand(ctx context.Context, command string) (rco
 
 	c.l.Lock()
 	defer c.l.Unlock()
+	if c.client == nil {
+		if err := c.Setup(); err != nil {
+			return rcon.Message{}, fmt.Errorf("failed to setup client: %w", err)
+		}
+	}
 	msg, err := c.client.SendCommand(command)
 	if err == nil {
 		return msg, nil
