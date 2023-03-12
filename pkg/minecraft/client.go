@@ -32,10 +32,10 @@ func NewClient() Client {
 func (c Client) Setup(address string, password string) (Client, error) {
 	rcon := NewReconnectingRCON(address, password)
 
+	c.rcon = rcon
 	if err := rcon.Setup(); err != nil {
 		return c, err
 	}
-	c.rcon = rcon
 
 	return c, nil
 }

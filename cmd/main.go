@@ -18,6 +18,7 @@ import (
 	"github.com/playnet-public/mc-bot/pkg/operands/rcon"
 	"github.com/playnet-public/mc-bot/pkg/valheim"
 	"github.com/seibert-media/golibs/log"
+	"go.uber.org/zap"
 
 	kubernetesClient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -39,7 +40,7 @@ func main() {
 
 	app, err := bot.New().Setup(token)
 	if err != nil {
-		log.From(ctx).Fatal("setting up bot")
+		log.From(ctx).Fatal("setting up bot", zap.Error(err))
 	}
 
 	bot := bot.NewMulti(appID)
@@ -53,12 +54,12 @@ func main() {
 	}
 
 	if err := bot.Finalize(ctx, app.Session()); err != nil {
-		log.From(ctx).Fatal("finalizing bot")
+		log.From(ctx).Fatal("finalizing bot", zap.Error(err))
 	}
 
 	defer app.Stop(ctx)
 	if err := app.Start(ctx); err != nil {
-		log.From(ctx).Fatal("running bot")
+		log.From(ctx).Fatal("running bot", zap.Error(err))
 	}
 }
 
@@ -86,7 +87,7 @@ func enableMinecraft(ctx context.Context, bot bot.Service) bot.Service {
 
 	mc, err := minecraft.NewClient().Setup(minecraftRconAddress, minecraftRconPassword)
 	if err != nil {
-		log.From(ctx).Fatal("setting up minecraft client")
+		log.From(ctx).Error("setting up minecraft client", zap.Error(err))
 	}
 
 	bot = bot.WithCommand(whitelist.Command{
@@ -113,7 +114,7 @@ func enableMinecraft(ctx context.Context, bot bot.Service) bot.Service {
 	if len(minecraftStatefulSetName) > 0 && len(minecraftStatefulSetNamespace) > 0 {
 		clientset, err := setupKubernetesClient()
 		if err != nil {
-			log.From(ctx).Fatal("setting up kubernetes client")
+			log.From(ctx).Fatal("setting up kubernetes client", zap.Error(err))
 		}
 
 		scaler := kubernetes.StatefulSetScaler{
@@ -147,12 +148,12 @@ func enableValheim(ctx context.Context, bot bot.Service) bot.Service {
 
 	valheimClient, err := valheim.NewClient(valheimQueryAddress).Setup()
 	if err != nil {
-		log.From(ctx).Fatal("setting up valheim client")
+		log.From(ctx).Fatal("setting up valheim client", zap.Error(err))
 	}
 
 	clientset, err := setupKubernetesClient()
 	if err != nil {
-		log.From(ctx).Fatal("setting up kubernetes client")
+		log.From(ctx).Fatal("setting up kubernetes client", zap.Error(err))
 	}
 
 	bot = bot.WithCommand(restart.Command{
