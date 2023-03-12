@@ -1,4 +1,4 @@
-FROM quay.io/kwiesmueller/golang-mirror:1.17 AS builder
+FROM quay.io/kwiesmueller/golang-mirror:1.20 AS builder
 
 WORKDIR /workdir
 COPY . .
